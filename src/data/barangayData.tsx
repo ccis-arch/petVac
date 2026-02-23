@@ -1,0 +1,12 @@
+export const locations = [
+  "Bunawan Brook",
+  "Consuelo",
+  "Imelda",
+  "Libertad",
+  "Mambalili",
+  "Nueva Era",
+  "Poblacion",
+  "San Andres",
+  "San Marcos",
+  "San Teodoro",
+];

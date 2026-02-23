@@ -1,0 +1,36 @@
+1. Create roles in your PostgreSQL database. You can create roles such as 'admin', 'personnel', and 'pet-owner'. You can do this using the Supabase dashboard or SQL commands.
+
+CREATE ROLE admin;
+CREATE ROLE personnel;
+CREATE ROLE pet_owner;
+
+2. Assign roles to users. When you create a user, you can assign them a role. You can do this using the Supabase Auth API when you sign up a user.
+
+const { user, error } = await supabase.auth.signUp({
+    email: 'example@email.com',
+    password: 'example-password',
+  }, {
+    data: { role: 'admin' } // assign role
+});
+
+3. Set up Row Level Security on your tables. You can set up policies that restrict access to rows in your tables based on the user's role.
+
+CREATE POLICY admin_policy ON public.my_table
+FOR ALL
+TO admin
+USING (auth.role() = 'admin');
+
+CREATE POLICY personnel_policy ON public.my_table
+FOR ALL
+TO personnel
+USING (auth.role() = 'personnel');
+
+CREATE POLICY pet_owner_policy ON public.my_table
+FOR ALL
+TO pet_owner
+USING (auth.role() = 'pet_owner');
+
+
+4. Enable Row Level Security on your tables.
+
+ALTER TABLE public.my_table ENABLE ROW LEVEL SECURITY;
