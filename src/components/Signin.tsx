@@ -1,20 +1,12 @@
 "use client";
 
 import Image from "next/image";
-import React, { use, useState } from "react";
+import React, { useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { redirect } from "next/navigation";
 
-// import { supabase } from "@/utils/supabase";
-import { NextRequest, NextResponse } from "next/server";
-import { supabase, supabaseAdmin } from "@/utils/supabase";
+import { supabase, getAuthHeaders } from "@/utils/supabase";
 import { LoadingScreenSection } from "./LoadingScreen";
 import { IoMdEye, IoMdEyeOff } from "react-icons/io";
-
-// import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-// import { createServerClient } from "@supabase/ssr";
-// import { Database } from "@/app/lib/database.types";
-// import Indicator from "./Indicator";
 
 const SigninComponent = () => {
   const router = useRouter();
@@ -28,8 +20,6 @@ const SigninComponent = () => {
   const [role, setRole] = useState(
     pathname === "/pet-owner/signin" ? "pet_owner" : "admin"
   );
-
-  //   const supabase2 = createClientComponentClient<Database>();
 
   const handleSubmit = async (e: { preventDefault: () => void }) => {
     e.preventDefault();
@@ -46,71 +36,52 @@ const SigninComponent = () => {
         setLoading(false);
         alert("An error occurred: " + error.message);
       } else {
-        // console.log("user", data?.user);
-        if (role === "personnel") {
-          const user = data?.user;
-          const { data: userData, error: fetchError } = await supabaseAdmin
-            .from("PersonnelProfiles")
-            .select("id")
-            .eq("id", user?.id);
+        // Get role from API
+        const token = data.session?.access_token;
+        const roleRes = await fetch("/api/auth/role", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
 
-          if (fetchError || userData.length === 0) {
+        if (!roleRes.ok) {
+          setLoading(false);
+          alert("Failed to verify role");
+          await supabase.auth.signOut();
+          return;
+        }
+
+        const roleData = await roleRes.json();
+        const userRole = roleData.role;
+
+        if (role === "personnel") {
+          if (userRole !== "personnel") {
             setLoading(false);
-            // console.error("Failed to fetch user data:", fetchError);
             alert("You are not a personnel!");
             await supabase.auth.signOut();
             return;
           }
           router.push("/personnel/dashboard/dashboard");
         } else if (role === "pet_owner") {
-          const user = data?.user;
-          const { data: userData, error: fetchError } = await supabase
-            .from("PetOwnerProfiles")
-            .select("id")
-            .eq("id", user?.id);
-
-          if (fetchError || userData.length === 0) {
+          if (userRole !== "pet-owner") {
             setLoading(false);
-
-            // console.error("Failed to fetch user data:", fetchError);
             alert("You are not a pet owner!");
             await supabase.auth.signOut();
             return;
           }
-
           router.push("/pet-owner/dashboard/");
         } else if (role === "admin") {
-          const user = data?.user;
-          const { data: userData1, error: fetchError1 } = await supabaseAdmin
-            .from("PersonnelProfiles")
-            .select("id")
-            .eq("id", user?.id);
-
-          const { data: userData2, error: fetchError2 } = await supabaseAdmin
-            .from("PetOwnerProfiles")
-            .select("id")
-            .eq("id", user?.id);
-
-          if (
-            (fetchError1 || userData1?.length === 0) &&
-            (fetchError2 || userData2?.length === 0)
-          ) {
-            // If user is not present in both PersonnelProfiles and PetOwnerProfiles
-
-            console.log("you are an admin!");
-
+          if (userRole !== "admin") {
             setLoading(false);
-            router.push("/admin/dashboard/dashboard");
+            await supabase.auth.signOut();
             return;
           }
-          await supabase.auth.signOut();
-          setLoading(false);
+          router.push("/admin/dashboard/dashboard");
         }
       }
-      // setLoading(false);
     } catch (error) {
       setLoading(false);
-
       console.error("An unexpected error occurred:", error);
     }
   };
@@ -188,7 +159,6 @@ const SigninComponent = () => {
                       type={showPassword ? "text" : "password"}
                       id="password"
                       name="password"
-                      // autoComplete="current-password"
                       required
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
@@ -207,7 +177,6 @@ const SigninComponent = () => {
               <div>
                 <button
                   type="submit"
-                  // onSubmit={handleSubmit}
                   className="group relative w-full flex justify-center p-3 border border-transparent text-sm font-medium rounded-lg text-white bg-green-700 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
                   Sign in
                 </button>

@@ -1,30 +1,23 @@
-import { supabase } from "@/utils/supabase";
+import { getAuthHeaders } from "@/utils/supabase";
 
 export const fetchVMSRecord = async (
   searchValue: string,
   entriesPerPage: number,
   currentPage: number
 ) => {
-  const offset = (currentPage - 1) * entriesPerPage;
-
   try {
-    let query = supabase
-      .from("VaccineInventory")
-      .select("*")
-      .order("last_modified", { ascending: false });
+    const params = new URLSearchParams({
+      search: searchValue,
+      entriesPerPage: entriesPerPage.toString(),
+      currentPage: currentPage.toString(),
+    });
 
-    if (searchValue) {
-      query = query.or(
-        `batch_number.ilike.%${searchValue}%,name.ilike.%${searchValue}%,status.ilike.%${searchValue}%`
-      );
-    }
+    const res = await fetch(`/api/vaccine-inventory?${params}`, {
+      headers: await getAuthHeaders(),
+    });
 
-    const response = await query.range(offset, offset + entriesPerPage - 1);
-
-    if (response.error) {
-      throw response.error;
-    }
-    return response;
+    if (!res.ok) throw new Error("Failed to fetch VMS records");
+    return res.json();
   } catch (error) {
     console.error("Error fetching data:", error);
     return null;
@@ -33,13 +26,12 @@ export const fetchVMSRecord = async (
 
 export const fetchVMSRecordForVaccination = async () => {
   try {
-    let query = supabase.from("VaccineInventory").select("*");
+    const res = await fetch(`/api/vaccine-inventory?all=true`, {
+      headers: await getAuthHeaders(),
+    });
 
-    const response = await query;
-    if (response.error) {
-      throw response.error;
-    }
-    return response;
+    if (!res.ok) throw new Error("Failed to fetch VMS records for vaccination");
+    return res.json();
   } catch (error) {
     console.error("Error fetching data:", error);
     return null;
@@ -48,15 +40,14 @@ export const fetchVMSRecordForVaccination = async () => {
 
 export const insertVMSRecord = async (data: any) => {
   try {
-    const response = await supabase
-      .from("VaccineInventory")
-      .insert(data)
-      .select();
+    const res = await fetch("/api/vaccine-inventory", {
+      method: "POST",
+      headers: await getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
 
-    if (response.error) {
-      throw response.error;
-    }
-    return response;
+    if (!res.ok) throw new Error("Failed to insert VMS record");
+    return res.json();
   } catch (error) {
     console.error("Error inserting into table:", error);
     return null;
@@ -65,17 +56,14 @@ export const insertVMSRecord = async (data: any) => {
 
 export const editVMSRecord = async (id: string, updatedRecord: any) => {
   try {
-    const { data, error } = await supabase
-      .from("VaccineInventory")
-      .update(updatedRecord)
-      .eq("id", id)
-      .select();
+    const res = await fetch(`/api/vaccine-inventory/${id}`, {
+      method: "PATCH",
+      headers: await getAuthHeaders(),
+      body: JSON.stringify(updatedRecord),
+    });
 
-    if (error) {
-      throw error;
-    }
-
-    return data;
+    if (!res.ok) throw new Error("Failed to update VMS record");
+    return res.json();
   } catch (error) {
     console.error("Error updating VMS record:", error);
     return null;
@@ -84,16 +72,13 @@ export const editVMSRecord = async (id: string, updatedRecord: any) => {
 
 export const deleteVMSRecord = async (id: string) => {
   try {
-    const { data, error } = await supabase
-      .from("VaccineInventory")
-      .delete()
-      .eq("id", id);
+    const res = await fetch(`/api/vaccine-inventory/${id}`, {
+      method: "DELETE",
+      headers: await getAuthHeaders(),
+    });
 
-    if (error) {
-      throw error;
-    }
-
-    return data;
+    if (!res.ok) throw new Error("Failed to delete VMS record");
+    return res.json();
   } catch (error) {
     console.error("Error deleting data:", error);
     return null;
@@ -105,16 +90,14 @@ export const updateVaccineInventoryWithInventoryID = async (
   updateData: any
 ) => {
   try {
-    const { data, error } = await supabase
-      .from("VaccineInventory")
-      .update(updateData)
-      .eq("id", id);
+    const res = await fetch(`/api/vaccine-inventory/${id}`, {
+      method: "PATCH",
+      headers: await getAuthHeaders(),
+      body: JSON.stringify(updateData),
+    });
 
-    if (error) {
-      throw error;
-    }
-
-    return data;
+    if (!res.ok) throw new Error("Failed to update vaccine inventory");
+    return res.json();
   } catch (error) {
     console.error("Error updating pet record:", error);
     return null;

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { supabase, supabaseAdmin } from "../utils/supabase";
+import { supabase } from "../utils/supabase";
 import { useRouter } from "next/navigation";
 
 import { UserContext } from "./UserContext";
@@ -46,51 +46,47 @@ const Protected = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     if (user) {
       const checkRole = async () => {
-        const { data: personnelData } = await supabaseAdmin
-          .from("PersonnelProfiles")
-          .select("id, first_name, last_name")
-          .eq("id", user.id);
+        try {
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
 
-        if (personnelData && personnelData.length > 0) {
-          const name = `${personnelData[0]?.first_name} ${personnelData[0]?.last_name}`;
-          setUserName(name);
-          setUserId(user.id);
-          router.push("/personnel/dashboard/registration");
-          return;
-        }
+          if (!session?.access_token) return;
 
-        const { data: petOwnerData } = await supabase
-          .from("PetOwnerProfiles")
-          .select("id, first_name, last_name, barangay")
-          .eq("id", user.id);
+          const res = await fetch("/api/auth/role", {
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+              "Content-Type": "application/json",
+            },
+          });
 
-        if (petOwnerData && petOwnerData.length > 0) {
-          const name = `${petOwnerData[0]?.first_name} ${petOwnerData[0]?.last_name}`;
-          setUserName(name);
-          setUserId(user.id);
-          setLocation(petOwnerData[0]?.barangay);
-          router.push("/pet-owner/dashboard");
-          return;
-        }
+          if (!res.ok) return;
 
-        const { data: adminData1 } = await supabaseAdmin
-          .from("PersonnelProfiles")
-          .select("id")
-          .eq("id", user.id);
+          const data = await res.json();
 
-        const { data: adminData2 } = await supabaseAdmin
-          .from("PetOwnerProfiles")
-          .select("id")
-          .eq("id", user.id);
+          if (data.role === "personnel") {
+            setUserName(data.user.name);
+            setUserId(user.id);
+            router.push("/personnel/dashboard/registration");
+            return;
+          }
 
-        if (
-          (adminData1 && adminData1.length) === 0 ||
-          (adminData2 && adminData2.length === 0)
-        ) {
-          setUserName("Admin");
-          setUserId(user.id);
-          router.push("/admin/dashboard/dashboard");
-          return;
+          if (data.role === "pet-owner") {
+            setUserName(data.user.name);
+            setUserId(user.id);
+            setLocation(data.user.barangay || "");
+            router.push("/pet-owner/dashboard");
+            return;
+          }
+
+          if (data.role === "admin") {
+            setUserName("Admin");
+            setUserId(user.id);
+            router.push("/admin/dashboard/dashboard");
+            return;
+          }
+        } catch (error) {
+          console.error("Error checking role:", error);
         }
       };
 
@@ -99,7 +95,6 @@ const Protected = ({ children }: { children: React.ReactNode }) => {
   }, [user, router]);
 
   if (isLoading) {
-    // You can show a loading spinner or message while checking authentication.
     return <LoadingScreenFullScreen />;
   }
 

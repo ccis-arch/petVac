@@ -1,4 +1,4 @@
-import { supabase, supabaseAdmin } from "@/utils/supabase";
+import { getAuthHeaders } from "@/utils/supabase";
 import { PetOwner } from "@/types/interfaces";
 
 export const createPetOwnerUser = async (
@@ -6,31 +6,18 @@ export const createPetOwnerUser = async (
   password: string,
   profile: any
 ) => {
-  const { data, error } = await supabaseAdmin.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: true,
+  const res = await fetch("/api/pet-owners", {
+    method: "POST",
+    headers: await getAuthHeaders(),
+    body: JSON.stringify({ email, password, profile }),
   });
 
-  if (error) {
-    throw error;
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || "Failed to create pet owner user");
   }
-  const user = data?.user;
 
-  if (user) {
-    const { data: profileData, error: insertError } = await supabase
-      .from("PetOwnerProfiles")
-      .insert({
-        id: user.id,
-        ...profile,
-      });
-
-    if (insertError) {
-      throw insertError;
-    }
-
-    return { profileData, userID: user.id };
-  }
+  return res.json();
 };
 
 export const fetchPetOwnerRecord = async (
@@ -39,45 +26,20 @@ export const fetchPetOwnerRecord = async (
   entriesPerPage: number,
   currentPage: number
 ) => {
-  const offset = (currentPage - 1) * entriesPerPage;
-
   try {
-    let query = supabase
-      .from("PetOwnerProfiles")
-      .select(`*`, { count: "exact" });
+    const params = new URLSearchParams({
+      search: searchValue,
+      location: locationFilter,
+      entriesPerPage: entriesPerPage.toString(),
+      currentPage: currentPage.toString(),
+    });
 
-    if (searchValue) {
-      query = query.or(
-        `first_name.ilike.%${searchValue}%,last_name.ilike.%${searchValue}%,gender.ilike.%${searchValue}%,barangay.ilike.%${searchValue}%`
-      );
-    }
+    const res = await fetch(`/api/pet-owners?${params}`, {
+      headers: await getAuthHeaders(),
+    });
 
-    if (locationFilter) {
-      query = query.eq("barangay", locationFilter);
-    }
-
-    const { data, error, status, count } = await query.range(
-      offset,
-      offset + entriesPerPage - 1
-    );
-
-    if (error) {
-      throw error;
-    }
-
-    const petCounts = await supabase.rpc("get_pet_counts");
-
-    if (petCounts.error) {
-      // console.log("yow");
-      throw petCounts.error;
-    }
-
-    return {
-      data: data,
-      petCounts: petCounts.data,
-      count: count,
-      status: status,
-    };
+    if (!res.ok) throw new Error("Failed to fetch pet owners");
+    return res.json();
   } catch (error) {
     console.error("Error fetching data:", error);
     return null;
@@ -90,42 +52,20 @@ export const fetchPetOwnerRecordByFilter = async (
   entriesPerPage: number,
   currentPage: number
 ) => {
-  const offset = (currentPage - 1) * entriesPerPage;
-
   try {
-    let query = supabase
-      .from("PetOwnerProfiles")
-      .select(`*`, { count: "exact" });
+    const params = new URLSearchParams({
+      date,
+      location,
+      entriesPerPage: entriesPerPage.toString(),
+      currentPage: currentPage.toString(),
+    });
 
-    if (date) {
-      query = query.eq("date_registered", date);
-    }
+    const res = await fetch(`/api/pet-owners/filter?${params}`, {
+      headers: await getAuthHeaders(),
+    });
 
-    if (location) {
-      query = query.eq("barangay", location);
-    }
-
-    const { data, error, status, count } = await query.range(
-      offset,
-      offset + entriesPerPage - 1
-    );
-
-    if (error) {
-      throw error;
-    }
-
-    const petCounts = await supabase.rpc("get_pet_counts");
-
-    if (petCounts.error) {
-      throw petCounts.error;
-    }
-
-    return {
-      data: data,
-      petCounts: petCounts.data,
-      count: count,
-      status: status,
-    };
+    if (!res.ok) throw new Error("Failed to fetch pet owners by filter");
+    return res.json();
   } catch (error) {
     console.error("Error fetching data:", error);
     return null;
@@ -134,18 +74,13 @@ export const fetchPetOwnerRecordByFilter = async (
 
 export const fetchPetOwnerByStringInput = async (name: string) => {
   try {
-    let query = supabase.from("PetOwnerProfiles").select(`*`);
+    const params = new URLSearchParams({ name });
+    const res = await fetch(`/api/pet-owners/search?${params}`, {
+      headers: await getAuthHeaders(),
+    });
 
-    if (name) {
-      query = query.or(`first_name.ilike.%${name}%,last_name.ilike.%${name}%`);
-    }
-    const { data, error } = await query;
-
-    if (error) {
-      throw error;
-    }
-
-    return data;
+    if (!res.ok) throw new Error("Failed to search pet owners");
+    return res.json();
   } catch (error) {
     console.error("Error fetching data:", error);
     return null;
@@ -154,62 +89,50 @@ export const fetchPetOwnerByStringInput = async (name: string) => {
 
 export const fetchPetOwnerById = async (id: string) => {
   try {
-    let query = supabase
-      .from("PetOwnerProfiles")
-      .select(`first_name, last_name`);
+    const res = await fetch(`/api/pet-owners/${id}`, {
+      headers: await getAuthHeaders(),
+    });
 
-    if (id) {
-      query = query.eq("id", id);
-    }
-
-    const { data, error } = await query;
-
-    if (error) {
-      throw error;
-    }
-
-    return data;
+    if (!res.ok) throw new Error("Failed to fetch pet owner by id");
+    return res.json();
   } catch (error) {
     console.error("Error fetching data:", error);
     return null;
   }
 };
 
-// Edit a pet owner record (changes made here)
 export const editPetOwnerRecord = async (
   id: string,
   updatedRecord: Partial<PetOwner>
 ) => {
   try {
-    const { data, error } = await supabase
-      .from("PetOwnerProfiles")
-      .update(updatedRecord)
-      .eq("id", id);
+    const res = await fetch(`/api/pet-owners/${id}`, {
+      method: "PATCH",
+      headers: await getAuthHeaders(),
+      body: JSON.stringify(updatedRecord),
+    });
 
-    if (error) {
-      throw error;
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || "Failed to update pet owner");
     }
 
-    return { data, error: null };
+    return await res.json();
   } catch (error) {
     console.error("Error updating pet owner record:", error);
     return { data: null, error };
   }
 };
 
-// Delete a pet owner record
 export const deletePetOwnerRecord = async (id: string) => {
   try {
-    const { data, error } = await supabase
-      .from("PetOwnerProfiles")
-      .delete()
-      .eq("id", id);
+    const res = await fetch(`/api/pet-owners/${id}`, {
+      method: "DELETE",
+      headers: await getAuthHeaders(),
+    });
 
-    if (error) {
-      throw error;
-    }
-
-    return data;
+    if (!res.ok) throw new Error("Failed to delete pet owner");
+    return res.json();
   } catch (error) {
     console.error("Error deleting pet owner record:", error);
     return null;

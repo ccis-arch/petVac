@@ -1,36 +1,22 @@
-import { supabase, supabaseAdmin } from "@/utils/supabase";
+import { getAuthHeaders } from "@/utils/supabase";
 
 export const createPersonnelUser = async (
   email: string,
   password: string,
   profile: any
 ) => {
-  const { data, error } = await supabaseAdmin.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: true,
+  const res = await fetch("/api/personnel", {
+    method: "POST",
+    headers: await getAuthHeaders(),
+    body: JSON.stringify({ email, password, profile }),
   });
 
-  if (error) {
-    throw error;
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || "Failed to create personnel user");
   }
 
-  const user = data?.user;
-
-  if (user) {
-    const { data: profileData, error: insertError } = await supabase
-      .from("PersonnelProfiles")
-      .insert({
-        id: user.id,
-        ...profile,
-      });
-
-    if (insertError) {
-      throw insertError;
-    }
-
-    return { profileData, userID: user.id };
-  }
+  return res.json();
 };
 
 export const fetchPersonnelUserRecord = async (
@@ -38,32 +24,19 @@ export const fetchPersonnelUserRecord = async (
   entriesPerPage: number,
   currentPage: number
 ) => {
-  const offset = (currentPage - 1) * entriesPerPage;
-
   try {
-    let query = supabase
-      .from("PersonnelProfiles")
-      .select(
-        `
-        *
-      `,
-        { count: "exact" }
-      )
-      .order("last_name", { ascending: false })
-      .order("first_name", { ascending: false });
+    const params = new URLSearchParams({
+      search: searchValue,
+      entriesPerPage: entriesPerPage.toString(),
+      currentPage: currentPage.toString(),
+    });
 
-    if (searchValue) {
-      query = query.or(
-        `email.ilike.%${searchValue}%,last_name.ilike.%${searchValue}%,first_name.ilike.%${searchValue}%,address.ilike.%${searchValue}%`
-      );
-    }
+    const res = await fetch(`/api/personnel?${params}`, {
+      headers: await getAuthHeaders(),
+    });
 
-    const response = await query.range(offset, offset + entriesPerPage - 1);
-
-    if (response.error) {
-      throw response.error;
-    }
-    return response;
+    if (!res.ok) throw new Error("Failed to fetch personnel records");
+    return res.json();
   } catch (error) {
     console.error("Error fetching data:", error);
     return null;
@@ -74,46 +47,29 @@ export const editPersonnelUserRecord = async (
   id: string,
   updatedRecord: { email: string; password: string }
 ) => {
-  const { data: user, error } = await supabaseAdmin.auth.admin.updateUserById(
-    id,
-    {
-      email: updatedRecord.email,
-      password: updatedRecord.password,
-    }
-  );
+  const res = await fetch(`/api/personnel/${id}`, {
+    method: "PATCH",
+    headers: await getAuthHeaders(),
+    body: JSON.stringify(updatedRecord),
+  });
 
-  if (error) {
-    throw error;
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || "Failed to update personnel user");
   }
 
-  if (user) {
-    try {
-      const { data, error } = await supabase
-        .from("PersonnelProfiles")
-        .update(updatedRecord)
-        .eq("id", id);
-
-      if (error) {
-        throw error;
-      }
-
-      return data;
-    } catch (error) {
-      console.error("Error updating personnel user record:", error);
-      return null;
-    }
-  }
+  return res.json();
 };
 
 export const deletePersonnelUserRecord = async (id: string) => {
   try {
-    const { data, error } = await supabaseAdmin.auth.admin.deleteUser(id);
+    const res = await fetch(`/api/personnel/${id}`, {
+      method: "DELETE",
+      headers: await getAuthHeaders(),
+    });
 
-    if (error) {
-      throw error;
-    }
-
-    return data;
+    if (!res.ok) throw new Error("Failed to delete personnel user");
+    return res.json();
   } catch (error) {
     console.error("Error deleting user:", error);
     return null;

@@ -1,48 +1,25 @@
-import { supabase } from "@/utils/supabase";
-
-// export const fetchCompleteVaccinationDetailsData = async () => {
-//   try {
-//     const { data, error } = await supabase
-//       .from("ViewCompleteVaccinationDetails")
-//       .select()
-//       .order("created_at", { ascending: false });
-
-//     if (error) {
-//       throw error;
-//     }
-
-//     return { data, error };
-//   } catch (error) {
-//     console.error("Error fetching data:", error);
-//     return null;
-//   }
-// };
+import { getAuthHeaders } from "@/utils/supabase";
 
 export const fetchCompleteVaccinationDetailsData = async (
   searchValue: string,
   entriesPerPage: number,
   currentPage: number
 ) => {
-  const offset = (currentPage - 1) * entriesPerPage;
-
   try {
-    let query = supabase
-      .from("ViewCompleteVaccinationDetails")
-      .select("*")
-      .order("created_at", { ascending: false });
+    const params = new URLSearchParams({
+      type: "details",
+      search: searchValue,
+      entriesPerPage: entriesPerPage.toString(),
+      currentPage: currentPage.toString(),
+    });
 
-    if (searchValue) {
-      query = query.or(
-        `location.ilike.%${searchValue}%,vaccine_name.ilike.%${searchValue}%,pet_owner.ilike.%${searchValue}%,pet_name.ilike.%${searchValue}%`
-      );
-    }
+    const res = await fetch(`/api/vaccination-records?${params}`, {
+      headers: await getAuthHeaders(),
+    });
 
-    const response = await query.range(offset, offset + entriesPerPage - 1);
-
-    if (response.error) {
-      throw response.error;
-    }
-    return response;
+    if (!res.ok)
+      throw new Error("Failed to fetch complete vaccination details");
+    return res.json();
   } catch (error) {
     console.error("Error fetching data:", error);
     return null;

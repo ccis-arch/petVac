@@ -1,28 +1,24 @@
-import { supabase } from "@/utils/supabase";
+import { getAuthHeaders } from "@/utils/supabase";
 
 export const fetchAppointmentRecordView = async (
   searchValue: string,
   entriesPerPage: number,
   currentPage: number
 ) => {
-  const offset = (currentPage - 1) * entriesPerPage;
-
   try {
-    let query = supabase
-      .from("ViewCompleteAppointmentDetails")
-      .select(`*`, { count: "exact" })
-      .order("ticket_num", { ascending: true });
+    const params = new URLSearchParams({
+      type: "view",
+      search: searchValue,
+      entriesPerPage: entriesPerPage.toString(),
+      currentPage: currentPage.toString(),
+    });
 
-    if (searchValue) {
-      query = query.or(`ticket_num.ilike.%${searchValue}%`);
-    }
+    const res = await fetch(`/api/appointments?${params}`, {
+      headers: await getAuthHeaders(),
+    });
 
-    const response = await query.range(offset, offset + entriesPerPage - 1);
-
-    if (response.error) {
-      throw response.error;
-    }
-    return response;
+    if (!res.ok) throw new Error("Failed to fetch appointment records view");
+    return res.json();
   } catch (error) {
     console.error("Error fetching data:", error);
     return null;
@@ -34,20 +30,16 @@ export const fetchAppointmentRecord = async (
   time: any
 ) => {
   try {
-    let query = supabase.from("AppointmentRecords").select("*");
+    const params = new URLSearchParams({ type: "records" });
+    if (vaccine_sched_id) params.set("vaccine_sched_id", vaccine_sched_id);
+    if (time) params.set("time", time);
 
-    if (vaccine_sched_id) {
-      query = query.eq("vaccine_sched_id", vaccine_sched_id);
-    }
-    if (time) {
-      query = query.eq("time", time);
-    }
+    const res = await fetch(`/api/appointments?${params}`, {
+      headers: await getAuthHeaders(),
+    });
 
-    const response = await query;
-    if (response.error) {
-      throw response.error;
-    }
-    return response;
+    if (!res.ok) throw new Error("Failed to fetch appointment records");
+    return res.json();
   } catch (error) {
     console.error("Error fetching data:", error);
     return null;
@@ -56,16 +48,13 @@ export const fetchAppointmentRecord = async (
 
 export const fetchAppointmentRecordByOwnerID = async (ownerId: string) => {
   try {
-    const { data, error } = await supabase
-      .from("ViewCompleteAppointmentDetails")
-      .select()
-      .eq("owner_id", ownerId);
+    const params = new URLSearchParams({ type: "by-owner", ownerId });
+    const res = await fetch(`/api/appointments?${params}`, {
+      headers: await getAuthHeaders(),
+    });
 
-    if (error) {
-      throw error;
-    }
-
-    return data;
+    if (!res.ok) throw new Error("Failed to fetch appointments by owner");
+    return res.json();
   } catch (error) {
     console.error("Error fetching data:", error);
     return null;
@@ -78,18 +67,19 @@ export const checkerBeforeInsertion = async (
   vaccine_sched_id: any
 ) => {
   try {
-    let query = supabase
-      .from("AppointmentRecords")
-      .select("id")
-      .eq("vaccine_sched_id", vaccine_sched_id)
-      .eq("owner_id", owner_id)
-      .eq("pet_id", pet_id);
+    const params = new URLSearchParams({
+      type: "check",
+      owner_id,
+      pet_id,
+      vaccine_sched_id: vaccine_sched_id?.toString() || "",
+    });
 
-    const response = await query;
-    if (response.error) {
-      throw response.error;
-    }
-    return response;
+    const res = await fetch(`/api/appointments?${params}`, {
+      headers: await getAuthHeaders(),
+    });
+
+    if (!res.ok) throw new Error("Failed to check appointment");
+    return res.json();
   } catch (error) {
     console.error("Error fetching data:", error);
     return null;
@@ -98,11 +88,14 @@ export const checkerBeforeInsertion = async (
 
 export const insertAppointmentRecord = async (data: any) => {
   try {
-    const response = await supabase.from("AppointmentRecords").insert(data);
-    if (response.error) {
-      throw response.error;
-    }
-    return response;
+    const res = await fetch("/api/appointments", {
+      method: "POST",
+      headers: await getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+
+    if (!res.ok) throw new Error("Failed to insert appointment record");
+    return res.json();
   } catch (error) {
     console.error("Error inserting into table:", error);
     return null;
@@ -111,16 +104,14 @@ export const insertAppointmentRecord = async (data: any) => {
 
 export const updateAppointmentStatus = async (id: number, status: string) => {
   try {
-    const response = await supabase
-      .from("AppointmentRecords")
-      .update({ status })
-      .eq("id", id);
+    const res = await fetch(`/api/appointments/${id}`, {
+      method: "PATCH",
+      headers: await getAuthHeaders(),
+      body: JSON.stringify({ status }),
+    });
 
-    if (response.error) {
-      throw response.error;
-    }
-
-    return response;
+    if (!res.ok) throw new Error("Failed to update appointment status");
+    return res.json();
   } catch (error) {
     console.error("Error updating status:", error);
     return null;
@@ -129,16 +120,13 @@ export const updateAppointmentStatus = async (id: number, status: string) => {
 
 export const deleteAppointmentRecord = async (id: string) => {
   try {
-    const { data, error } = await supabase
-      .from("AppointmentRecords")
-      .delete()
-      .eq("id", id);
+    const res = await fetch(`/api/appointments/${id}`, {
+      method: "DELETE",
+      headers: await getAuthHeaders(),
+    });
 
-    if (error) {
-      throw error;
-    }
-
-    return data;
+    if (!res.ok) throw new Error("Failed to delete appointment record");
+    return res.json();
   } catch (error) {
     console.error("Error deleting data:", error);
     return null;

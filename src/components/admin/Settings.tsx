@@ -3,7 +3,7 @@
 import { useCallback, useContext, useEffect, useState } from "react";
 import { MdOutlineEdit } from "react-icons/md";
 import { UserContext } from "@/utils/UserContext";
-import { supabase, supabaseAdmin } from "@/utils/supabase";
+import { supabase, getAuthHeaders } from "@/utils/supabase";
 
 const Settings = () => {
   const [currentEmail, setCurrentEmail] = useState("");
@@ -15,17 +15,17 @@ const Settings = () => {
   const { userName, userId } = useContext(UserContext);
 
   const memoizedFetchUserData = useCallback(async () => {
-    const { data, error } = await supabaseAdmin.auth.admin.getUserById(userId);
-
-    if (error) {
-      // console.log("Error fetching user data: ", error);
-    } else if (data) {
-      const userEmail = data.user.email;
-      if (userEmail) {
-        // console.log("email", userEmail);
-        setEmail(userEmail);
-        setCurrentEmail(userEmail);
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`/api/auth/user?userId=${userId}`, { headers });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.email) {
+        setEmail(data.email);
+        setCurrentEmail(data.email);
       }
+    } catch (error) {
+      console.error("Error fetching user data:", error);
     }
   }, []);
 

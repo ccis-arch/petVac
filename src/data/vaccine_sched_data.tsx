@@ -1,18 +1,14 @@
-import { supabase } from "@/utils/supabase";
+import { getAuthHeaders } from "@/utils/supabase";
 
 export const fetchVaccineSchedule = async (selectedLocation: string) => {
   try {
-    let query = supabase.from("VaccinationSchedule").select("*");
+    const params = new URLSearchParams({ location: selectedLocation });
+    const res = await fetch(`/api/vaccination-schedule?${params}`, {
+      headers: await getAuthHeaders(),
+    });
 
-    if (selectedLocation) {
-      query = query.eq("location", selectedLocation);
-    }
-
-    const response = await query;
-    if (response.error) {
-      throw response.error;
-    }
-    return response;
+    if (!res.ok) throw new Error("Failed to fetch vaccine schedule");
+    return res.json();
   } catch (error) {
     console.error("Error fetching data:", error);
     return null;
@@ -23,23 +19,17 @@ export const fetchVaccineScheduleForAppointment = async (
   selectedLocation: string
 ) => {
   try {
-    const currentDate = new Date();
-    currentDate.setHours(0, 0, 0, 0);
+    const params = new URLSearchParams({
+      location: selectedLocation,
+      forAppointment: "true",
+    });
 
-    let query = supabase
-      .from("VaccinationSchedule")
-      .select("*")
-      .gte("start_date", currentDate.toISOString().split("T")[0]); // Only select records where start_date is greater than or equal to the current date
+    const res = await fetch(`/api/vaccination-schedule?${params}`, {
+      headers: await getAuthHeaders(),
+    });
 
-    if (selectedLocation) {
-      query = query.eq("location", selectedLocation);
-    }
-
-    const response = await query.order("start_date", { ascending: true });
-    if (response.error) {
-      throw response.error;
-    }
-    return response;
+    if (!res.ok) throw new Error("Failed to fetch vaccine schedule for appointment");
+    return res.json();
   } catch (error) {
     console.error("Error fetching data:", error);
     return null;
@@ -48,11 +38,14 @@ export const fetchVaccineScheduleForAppointment = async (
 
 export const insertVaccineSchedule = async (data: any) => {
   try {
-    const response = await supabase.from("VaccinationSchedule").insert(data);
-    if (response.error) {
-      throw response.error;
-    }
-    return response;
+    const res = await fetch("/api/vaccination-schedule", {
+      method: "POST",
+      headers: await getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+
+    if (!res.ok) throw new Error("Failed to insert vaccine schedule");
+    return res.json();
   } catch (error) {
     console.error("Error inserting into table:", error);
     return null;
@@ -61,16 +54,14 @@ export const insertVaccineSchedule = async (data: any) => {
 
 export const updateVaccineSchedule = async (id: number, updatedSched: any) => {
   try {
-    const { data, error } = await supabase
-      .from("VaccinationSchedule")
-      .update(updatedSched)
-      .eq("id", id);
+    const res = await fetch(`/api/vaccination-schedule/${id}`, {
+      method: "PATCH",
+      headers: await getAuthHeaders(),
+      body: JSON.stringify(updatedSched),
+    });
 
-    if (error) {
-      throw error;
-    }
-
-    return data;
+    if (!res.ok) throw new Error("Failed to update vaccine schedule");
+    return res.json();
   } catch (error) {
     console.error("Error updating pet record:", error);
     return null;
@@ -79,16 +70,13 @@ export const updateVaccineSchedule = async (id: number, updatedSched: any) => {
 
 export const deleteVaccineSchedule = async (id: number) => {
   try {
-    const { data, error } = await supabase
-      .from("VaccinationSchedule")
-      .delete()
-      .eq("id", id);
+    const res = await fetch(`/api/vaccination-schedule/${id}`, {
+      method: "DELETE",
+      headers: await getAuthHeaders(),
+    });
 
-    if (error) {
-      throw error;
-    }
-
-    return data;
+    if (!res.ok) throw new Error("Failed to delete vaccine schedule");
+    return res.json();
   } catch (error) {
     console.error("Error deleting vaccine schedule record:", error);
     return null;

@@ -1,17 +1,13 @@
-import { supabase } from "@/utils/supabase";
+import { getAuthHeaders } from "@/utils/supabase";
 
 export const getAdminNotifications = async () => {
   try {
-    const { data, error } = await supabase
-      .from("AdminNotifications")
-      .select()
-      .order("created_at", { ascending: false });
+    const res = await fetch("/api/notifications", {
+      headers: await getAuthHeaders(),
+    });
 
-    if (error) {
-      throw error;
-    }
-
-    return { data, error };
+    if (!res.ok) throw new Error("Failed to fetch notifications");
+    return res.json();
   } catch (error) {
     console.error("Error fetching data:", error);
     return null;
@@ -20,11 +16,14 @@ export const getAdminNotifications = async () => {
 
 export const insertAdminNotification = async (data: any) => {
   try {
-    const response = await supabase.from("AdminNotifications").insert(data);
-    if (response.error) {
-      throw response.error;
-    }
-    return response;
+    const res = await fetch("/api/notifications", {
+      method: "POST",
+      headers: await getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+
+    if (!res.ok) throw new Error("Failed to insert notification");
+    return res.json();
   } catch (error) {
     console.error("Error inserting into table:", error);
     return null;
@@ -33,16 +32,13 @@ export const insertAdminNotification = async (data: any) => {
 
 export const deleteAdminNotification = async (id: string) => {
   try {
-    const { data, error } = await supabase
-      .from("AdminNotifications")
-      .delete()
-      .eq("id", id);
+    const res = await fetch(`/api/notifications?id=${id}`, {
+      method: "DELETE",
+      headers: await getAuthHeaders(),
+    });
 
-    if (error) {
-      throw error;
-    }
-
-    return data;
+    if (!res.ok) throw new Error("Failed to delete notification");
+    return res.json();
   } catch (error) {
     console.error("Error deleting data:", error);
     return null;
@@ -51,16 +47,13 @@ export const deleteAdminNotification = async (id: string) => {
 
 export const deleteAllAdminNotifications = async () => {
   try {
-    const { data, error } = await supabase
-      .from("AdminNotifications")
-      .delete()
-      .match({});
+    const res = await fetch("/api/notifications", {
+      method: "DELETE",
+      headers: await getAuthHeaders(),
+    });
 
-    if (error) {
-      throw error;
-    }
-
-    return data;
+    if (!res.ok) throw new Error("Failed to delete all notifications");
+    return res.json();
   } catch (error) {
     console.error("Error deleting all data:", error);
     return null;

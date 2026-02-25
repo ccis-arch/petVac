@@ -27,9 +27,7 @@ const Redirect = ({ children }: { children: React.ReactNode }) => {
           data &&
           (pathname === "/admin/signin" || pathname === "/pet-owner/signin")
         ) {
-          // User is already logged in and is on the '/signin' route, redirect to '/dashboard'
           setUser(data.user);
-          //   router.push("/dashboard");
         }
       } catch (error) {
         console.error("An unexpected error occurred:", error);
@@ -44,42 +42,40 @@ const Redirect = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     if (user) {
       const checkRole = async () => {
-        const { data: personnelData } = await supabase
-          .from("PersonnelProfiles")
-          .select("id")
-          .eq("id", user.id);
+        try {
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
 
-        if (personnelData && personnelData.length > 0) {
-          router.push("/personnel/dashboard/dashboard");
-          return;
-        }
+          if (!session?.access_token) return;
 
-        const { data: petOwnerData } = await supabase
-          .from("PetOwnerProfiles")
-          .select("id")
-          .eq("id", user.id);
+          const res = await fetch("/api/auth/role", {
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+              "Content-Type": "application/json",
+            },
+          });
 
-        if (petOwnerData && petOwnerData.length > 0) {
-          router.push("/pet-owner/dashboard");
-          return;
-        }
+          if (!res.ok) return;
 
-        const { data: adminData1 } = await supabase
-          .from("PersonnelProfiles")
-          .select("id")
-          .eq("id", user.id);
+          const data = await res.json();
 
-        const { data: adminData2 } = await supabase
-          .from("PetOwnerProfiles")
-          .select("id")
-          .eq("id", user.id);
+          if (data.role === "personnel") {
+            router.push("/personnel/dashboard/dashboard");
+            return;
+          }
 
-        if (
-          (adminData1 && adminData1.length) === 0 ||
-          (adminData2 && adminData2.length === 0)
-        ) {
-          router.push("/admin/dashboard/dashboard");
-          return;
+          if (data.role === "pet-owner") {
+            router.push("/pet-owner/dashboard");
+            return;
+          }
+
+          if (data.role === "admin") {
+            router.push("/admin/dashboard/dashboard");
+            return;
+          }
+        } catch (error) {
+          console.error("Error checking role:", error);
         }
       };
 

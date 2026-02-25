@@ -1,17 +1,18 @@
-import { supabase } from "@/utils/supabase";
+import { getAuthHeaders } from "@/utils/supabase";
 
 export const checkIfVaccinationRecordHavePetID = async (pet_id: string) => {
   try {
-    const { data, error } = await supabase
-      .from("VaccinationRecords")
-      .select("vaccine_id")
-      .eq("pet_id", pet_id);
+    const params = new URLSearchParams({
+      type: "vaccination-pet",
+      pet_id,
+    });
 
-    if (error) {
-      throw error;
-    }
+    const res = await fetch(`/api/cascade-checks?${params}`, {
+      headers: await getAuthHeaders(),
+    });
 
-    return data;
+    if (!res.ok) throw new Error("Failed to check vaccination records");
+    return res.json();
   } catch (error) {
     console.error("Error fetching pet record:", error);
     return null;
@@ -22,16 +23,17 @@ export const checkIfDistributedVaccinatHaveInvetoryIdOfVaccinatedPet = async (
   inventory_id: number
 ) => {
   try {
-    const { data, error } = await supabase
-      .from("DistributedVaccines")
-      .select("id, num_vaccines")
-      .eq("inventory_id", inventory_id);
+    const params = new URLSearchParams({
+      type: "distributed-inventory",
+      inventory_id: inventory_id.toString(),
+    });
 
-    if (error) {
-      throw error;
-    }
+    const res = await fetch(`/api/cascade-checks?${params}`, {
+      headers: await getAuthHeaders(),
+    });
 
-    return data;
+    if (!res.ok) throw new Error("Failed to check distributed vaccines");
+    return res.json();
   } catch (error) {
     console.error("Error fetching pet record:", error);
     return null;
@@ -42,16 +44,17 @@ export const checkVaccineIdInVaccineInventory = async (
   inventory_id: number
 ) => {
   try {
-    const { data, error } = await supabase
-      .from("VaccineInventory")
-      .select("id, remaining_qty")
-      .eq("id", inventory_id);
+    const params = new URLSearchParams({
+      type: "vaccine-inventory",
+      inventory_id: inventory_id.toString(),
+    });
 
-    if (error) {
-      throw error;
-    }
+    const res = await fetch(`/api/cascade-checks?${params}`, {
+      headers: await getAuthHeaders(),
+    });
 
-    return data;
+    if (!res.ok) throw new Error("Failed to check vaccine inventory");
+    return res.json();
   } catch (error) {
     console.error("Error fetching pet record:", error);
     return null;

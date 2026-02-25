@@ -1,4 +1,4 @@
-import { supabase, supabaseAdmin } from "../utils/supabase";
+import { supabase, getAuthHeaders } from "../utils/supabase";
 
 export async function getUserAndRole(sessionToken: string) {
   const {
@@ -11,40 +11,22 @@ export async function getUserAndRole(sessionToken: string) {
     return { user: null, role: null };
   }
 
-  const { data: personnelData } = await supabaseAdmin
-    .from("PersonnelProfiles")
-    .select("id")
-    .eq("id", user?.id);
+  try {
+    const res = await fetch("/api/auth/role", {
+      headers: {
+        Authorization: `Bearer ${sessionToken}`,
+        "Content-Type": "application/json",
+      },
+    });
 
-  if (personnelData && personnelData.length > 0) {
-    return { user, role: "personnel" };
+    if (!res.ok) {
+      return { user, role: null };
+    }
+
+    const data = await res.json();
+    return { user, role: data.role };
+  } catch (err) {
+    console.error("Error fetching role:", err);
+    return { user, role: null };
   }
-
-  const { data: petOwnerData } = await supabase
-    .from("PetOwnerProfiles")
-    .select("id")
-    .eq("id", user?.id);
-
-  if (petOwnerData && petOwnerData.length > 0) {
-    return { user, role: "pet-owner" };
-  }
-
-  const { data: adminData1 } = await supabaseAdmin
-    .from("PersonnelProfiles")
-    .select("id")
-    .eq("id", user?.id);
-
-  const { data: adminData2 } = await supabaseAdmin
-    .from("PetOwnerProfiles")
-    .select("id")
-    .eq("id", user?.id);
-
-  if (
-    (adminData1 && adminData1.length) === 0 ||
-    (adminData2 && adminData2.length === 0)
-  ) {
-    return { user, role: "admin" };
-  }
-
-  return { user, role: null };
 }

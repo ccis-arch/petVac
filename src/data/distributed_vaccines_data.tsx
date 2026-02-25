@@ -1,28 +1,13 @@
-import { supabase } from "@/utils/supabase";
+import { getAuthHeaders } from "@/utils/supabase";
 
 export const fetchDistributionRecords = async () => {
   try {
-    let query = supabase
-      .from("DistributedVaccines")
-      .select(`*`, { count: "exact" });
+    const res = await fetch(`/api/distributed-vaccines`, {
+      headers: await getAuthHeaders(),
+    });
 
-    const { data, error, status, count } = await query;
-
-    if (error) {
-      throw error;
-    }
-
-    const totalVaccines = data.reduce(
-      (total, record) => total + record.num_vaccines,
-      0
-    );
-
-    return {
-      data: data,
-      count: count,
-      status: status,
-      totalVaccines: totalVaccines,
-    };
+    if (!res.ok) throw new Error("Failed to fetch distribution records");
+    return res.json();
   } catch (error) {
     console.error("Error fetching data:", error);
     return null;
@@ -31,31 +16,14 @@ export const fetchDistributionRecords = async () => {
 
 export const fetchDistributionRecordsByBarangay = async (barangay: string) => {
   try {
-    let query = supabase
-      .from("DistributedVaccines")
-      .select(`*`, { count: "exact" });
+    const params = new URLSearchParams({ barangay });
+    const res = await fetch(`/api/distributed-vaccines?${params}`, {
+      headers: await getAuthHeaders(),
+    });
 
-    if (barangay !== "") {
-      query = query.eq("barangay", barangay);
-    }
-
-    const { data, error, status, count } = await query;
-
-    if (error) {
-      throw error;
-    }
-
-    const totalVaccines = data.reduce(
-      (total, record) => total + record.num_vaccines,
-      0
-    );
-
-    return {
-      data: data,
-      count: count,
-      status: status,
-      totalVaccines: totalVaccines,
-    };
+    if (!res.ok)
+      throw new Error("Failed to fetch distribution records by barangay");
+    return res.json();
   } catch (error) {
     console.error("Error fetching data:", error);
     return null;
@@ -64,11 +32,14 @@ export const fetchDistributionRecordsByBarangay = async (barangay: string) => {
 
 export const insertDistributedVaccines = async (data: any) => {
   try {
-    const response = await supabase.from("DistributedVaccines").insert(data);
-    if (response.error) {
-      throw response.error;
-    }
-    return response;
+    const res = await fetch("/api/distributed-vaccines", {
+      method: "POST",
+      headers: await getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+
+    if (!res.ok) throw new Error("Failed to insert distributed vaccines");
+    return res.json();
   } catch (error) {
     console.error("Error inserting into table:", error);
     return null;
@@ -80,16 +51,14 @@ export const updateDistributedVaccines = async (
   updateData: any
 ) => {
   try {
-    const { data, error } = await supabase
-      .from("DistributedVaccines")
-      .update(updateData)
-      .eq("inventory_id", id);
+    const res = await fetch("/api/distributed-vaccines", {
+      method: "PATCH",
+      headers: await getAuthHeaders(),
+      body: JSON.stringify({ type: "by-inventory", id, updateData }),
+    });
 
-    if (error) {
-      throw error;
-    }
-
-    return data;
+    if (!res.ok) throw new Error("Failed to update distributed vaccines");
+    return res.json();
   } catch (error) {
     console.error("Error updating pet record:", error);
     return null;
@@ -103,18 +72,20 @@ export const updateDistributedVaccineWithDateAndBarangay = async (
   updateData: any
 ) => {
   try {
-    const { data, error } = await supabase
-      .from("DistributedVaccines")
-      .update(updateData)
-      .eq("barangay", barangay)
-      .eq("date", date)
-      .eq("inventory_id", inventory_id);
+    const res = await fetch("/api/distributed-vaccines", {
+      method: "PATCH",
+      headers: await getAuthHeaders(),
+      body: JSON.stringify({
+        type: "by-date-barangay",
+        barangay,
+        date,
+        inventory_id,
+        updateData,
+      }),
+    });
 
-    if (error) {
-      throw error;
-    }
-
-    return data;
+    if (!res.ok) throw new Error("Failed to update distributed vaccine");
+    return res.json();
   } catch (error) {
     console.error("Error updating pet record:", error);
     return null;
@@ -126,16 +97,19 @@ export const updateDistributedVaccineWithInventoryID = async (
   updateData: any
 ) => {
   try {
-    const { data, error } = await supabase
-      .from("DistributedVaccines")
-      .update(updateData)
-      .eq("inventory_id", inventory_id);
+    const res = await fetch("/api/distributed-vaccines", {
+      method: "PATCH",
+      headers: await getAuthHeaders(),
+      body: JSON.stringify({
+        type: "by-inventory-id",
+        inventory_id,
+        updateData,
+      }),
+    });
 
-    if (error) {
-      throw error;
-    }
-
-    return data;
+    if (!res.ok)
+      throw new Error("Failed to update distributed vaccine by inventory ID");
+    return res.json();
   } catch (error) {
     console.error("Error updating pet record:", error);
     return null;
@@ -148,18 +122,19 @@ export const checkIfDataExists = async (
   inventory_id: number
 ) => {
   try {
-    const { data, error } = await supabase
-      .from("DistributedVaccines")
-      .select("id, num_vaccines")
-      .eq("barangay", barangay)
-      .eq("date", date)
-      .eq("inventory_id", inventory_id);
+    const params = new URLSearchParams({
+      type: "check",
+      barangay,
+      date,
+      inventory_id: inventory_id.toString(),
+    });
 
-    if (error) {
-      throw error;
-    }
+    const res = await fetch(`/api/distributed-vaccines?${params}`, {
+      headers: await getAuthHeaders(),
+    });
 
-    return data;
+    if (!res.ok) throw new Error("Failed to check if data exists");
+    return res.json();
   } catch (error) {
     console.error("Error fetching pet record:", error);
     return null;
