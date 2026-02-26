@@ -11,7 +11,7 @@ import {
   fetchVaccineScheduleForAppointment,
 } from "@/data/vaccine_sched_data";
 import { UserContext } from "@/utils/UserContext";
-import { supabase, supabaseAdmin } from "@/utils/supabase";
+import { supabase } from "@/utils/supabase";
 import { Scheduler } from "@aldabil/react-scheduler";
 import { differenceInMonths, differenceInYears, parseISO } from "date-fns";
 import Image from "next/image";
@@ -636,17 +636,16 @@ const PetOwnerDashboard = () => {
   const [loading, setLoading] = useState(false);
 
   const memoizedFetchUserEmailData = useCallback(async () => {
-    const { data, error } = await supabaseAdmin.auth.admin.getUserById(userId);
+    try {
+      const response = await fetch(`/api/admin/user?userId=${userId}`);
+      const result = await response.json();
 
-    if (error) {
-      // console.log("Error fetching user data: ", error);
-    } else if (data) {
-      const userEmail = data.user.email;
-
-      if (userEmail) {
-        setEmail(userEmail);
-        setCurrentEmail(userEmail);
+      if (response.ok && result.user?.email) {
+        setEmail(result.user.email);
+        setCurrentEmail(result.user.email);
       }
+    } catch (error) {
+      console.error("Error fetching user data:", error);
     }
   }, [userId]);
 
@@ -657,58 +656,59 @@ const PetOwnerDashboard = () => {
   const handleEditInfoEvent = async (editType: string) => {
     setLoading(true);
 
-    if (editType === "email") {
-      const { data: user, error } =
-        await supabaseAdmin.auth.admin.updateUserById(userId, { email: email });
+    try {
+      const updates = editType === "email" ? { email } : { password: newPassword };
+      const response = await fetch("/api/admin/user", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, updates }),
+      });
 
-      if (!error) {
+      const result = await response.json();
+
+      if (!response.ok) {
+        console.error(`Error updating user ${editType}:`, result.error);
+        setLoading(false);
+        return;
+      }
+
+      if (editType === "email") {
         setToggleEditEmail(false);
-        const { data, error } = await supabase
+        const { error } = await supabase
           .from("PetOwnerProfiles")
           .update({ email: email })
           .eq("id", userId);
         if (error) {
-          await supabaseAdmin.auth.admin.updateUserById(userId, {
-            email: currentEmail,
+          // Revert auth email if profile update fails
+          await fetch("/api/admin/user", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId, updates: { email: currentEmail } }),
           });
+          setLoading(false);
           return;
         }
         setLoading(false);
-
         alert("Successfully updated user email");
         setCurrentEmail(email);
-        return;
-      }
-      console.error("Error updating user email:", error);
-    } else {
-      const { data: user, error } =
-        await supabaseAdmin.auth.admin.updateUserById(userId, {
-          password: newPassword,
-        });
-
-      if (!error) {
-        const { data, error } = await supabase
+      } else {
+        const { error } = await supabase
           .from("PetOwnerProfiles")
           .update({ password: newPassword })
           .eq("id", userId);
         if (error) {
-          await supabaseAdmin.auth.admin.updateUserById(userId, {
-            password: newPassword,
-          });
+          setLoading(false);
           return;
         }
         setLoading(false);
-
         alert("Successfully updated user password");
-
         setNewPassword("");
         setConfirmNewPassword("");
-        return;
       }
-      // console.log("Error updating user data: ", error);
-      console.error("Error updating user password:", error);
+    } catch (error) {
+      console.error(`Error updating user:`, error);
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const [initialFirstName, setInitialFirstName] = useState("");

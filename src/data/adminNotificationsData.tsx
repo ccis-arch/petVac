@@ -1,4 +1,4 @@
-import { supabase, supabaseAdmin } from "@/utils/supabase";
+import { supabase } from "@/utils/supabase";
 
 export const getAdminNotifications = async () => {
   try {
@@ -20,11 +20,19 @@ export const getAdminNotifications = async () => {
 
 export const insertAdminNotification = async (data: any) => {
   try {
-    const response = await supabaseAdmin.from("AdminNotifications").insert(data);
-    if (response.error) {
-      throw response.error;
+    const response = await fetch("/api/admin/notifications", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.error || "Failed to insert notification");
     }
-    return response;
+
+    return { data: result.data, status: result.status };
   } catch (error) {
     console.error("Error inserting into table:", error);
     return null;

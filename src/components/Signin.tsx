@@ -5,9 +5,7 @@ import React, { use, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { redirect } from "next/navigation";
 
-// import { supabase } from "@/utils/supabase";
-import { NextRequest, NextResponse } from "next/server";
-import { supabase, supabaseAdmin } from "@/utils/supabase";
+import { supabase } from "@/utils/supabase";
 import { LoadingScreenSection } from "./LoadingScreen";
 import { IoMdEye, IoMdEyeOff } from "react-icons/io";
 
@@ -46,59 +44,32 @@ const SigninComponent = () => {
         setLoading(false);
         alert("An error occurred: " + error.message);
       } else {
-        // console.log("user", data?.user);
-        if (role === "personnel") {
-          const user = data?.user;
-          const { data: userData, error: fetchError } = await supabaseAdmin
-            .from("PersonnelProfiles")
-            .select("id")
-            .eq("id", user?.id);
+        const user = data?.user;
+        const roleResponse = await fetch("/api/admin/check-role", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId: user?.id }),
+        });
+        const roleResult = await roleResponse.json();
 
-          if (fetchError || userData.length === 0) {
+        if (role === "personnel") {
+          if (roleResult.role !== "personnel") {
             setLoading(false);
-            // console.error("Failed to fetch user data:", fetchError);
             alert("You are not a personnel!");
             await supabase.auth.signOut();
             return;
           }
           router.push("/personnel/dashboard/dashboard");
         } else if (role === "pet_owner") {
-          const user = data?.user;
-          const { data: userData, error: fetchError } = await supabase
-            .from("PetOwnerProfiles")
-            .select("id")
-            .eq("id", user?.id);
-
-          if (fetchError || userData.length === 0) {
+          if (roleResult.role !== "pet-owner") {
             setLoading(false);
-
-            // console.error("Failed to fetch user data:", fetchError);
             alert("You are not a pet owner!");
             await supabase.auth.signOut();
             return;
           }
-
           router.push("/pet-owner/dashboard/");
         } else if (role === "admin") {
-          const user = data?.user;
-          const { data: userData1, error: fetchError1 } = await supabaseAdmin
-            .from("PersonnelProfiles")
-            .select("id")
-            .eq("id", user?.id);
-
-          const { data: userData2, error: fetchError2 } = await supabaseAdmin
-            .from("PetOwnerProfiles")
-            .select("id")
-            .eq("id", user?.id);
-
-          if (
-            (fetchError1 || userData1?.length === 0) &&
-            (fetchError2 || userData2?.length === 0)
-          ) {
-            // If user is not present in both PersonnelProfiles and PetOwnerProfiles
-
-            console.log("you are an admin!");
-
+          if (roleResult.role === "admin") {
             setLoading(false);
             router.push("/admin/dashboard/dashboard");
             return;

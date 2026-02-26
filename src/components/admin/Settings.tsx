@@ -3,7 +3,7 @@
 import { useCallback, useContext, useEffect, useState } from "react";
 import { MdOutlineEdit } from "react-icons/md";
 import { UserContext } from "@/utils/UserContext";
-import { supabase, supabaseAdmin } from "@/utils/supabase";
+import { supabase } from "@/utils/supabase";
 
 const Settings = () => {
   const [currentEmail, setCurrentEmail] = useState("");
@@ -15,53 +15,50 @@ const Settings = () => {
   const { userName, userId } = useContext(UserContext);
 
   const memoizedFetchUserData = useCallback(async () => {
-    const { data, error } = await supabaseAdmin.auth.admin.getUserById(userId);
+    try {
+      const response = await fetch(`/api/admin/user?userId=${userId}`);
+      const result = await response.json();
 
-    if (error) {
-      // console.log("Error fetching user data: ", error);
-    } else if (data) {
-      const userEmail = data.user.email;
-      if (userEmail) {
-        // console.log("email", userEmail);
-        setEmail(userEmail);
-        setCurrentEmail(userEmail);
+      if (response.ok && result.user?.email) {
+        setEmail(result.user.email);
+        setCurrentEmail(result.user.email);
       }
+    } catch (error) {
+      console.error("Error fetching user data:", error);
     }
-  }, []);
+  }, [userId]);
 
   useEffect(() => {
     memoizedFetchUserData();
   }, []);
 
   const handleEditEvent = async (editType: string) => {
-    if (editType === "email") {
-      const { data: user, error } =
-        await supabaseAdmin.auth.admin.updateUserById(userId, { email: email });
+    try {
+      const updates = editType === "email" ? { email } : { password: newPassword };
+      const response = await fetch("/api/admin/user", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, updates }),
+      });
 
-      if (!error) {
-        // console.log("Successfully updated user email");
+      const result = await response.json();
+
+      if (!response.ok) {
+        console.error(`Error updating user ${editType}:`, result.error);
+        return;
+      }
+
+      if (editType === "email") {
         setToggleEditEmail(false);
         alert("Successfully updated user email");
         setCurrentEmail(email);
-        return;
-      }
-      // console.log("Error updating user data: ", error);
-      console.error("Error updating user email:", error);
-    } else {
-      const { data: user, error } =
-        await supabaseAdmin.auth.admin.updateUserById(userId, {
-          password: newPassword,
-        });
-
-      if (!error) {
-        // console.log("Successfully updated user password");
+      } else {
         alert("Successfully updated user password");
         setNewPassword("");
         setConfirmNewPassword("");
-        return;
       }
-      // console.log("Error updating user data: ", error);
-      console.error("Error updating user password:", error);
+    } catch (error) {
+      console.error(`Error updating user ${editType}:`, error);
     }
   };
 

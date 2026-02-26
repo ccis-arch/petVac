@@ -1,4 +1,4 @@
-import { supabase, supabaseAdmin } from "../utils/supabase";
+import { supabase } from "../utils/supabase";
 
 export async function getUserAndRole(sessionToken: string) {
   const {
@@ -11,39 +11,20 @@ export async function getUserAndRole(sessionToken: string) {
     return { user: null, role: null };
   }
 
-  const { data: personnelData } = await supabaseAdmin
-    .from("PersonnelProfiles")
-    .select("id")
-    .eq("id", user?.id);
+  try {
+    const response = await fetch("/api/admin/check-role", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: user?.id }),
+    });
 
-  if (personnelData && personnelData.length > 0) {
-    return { user, role: "personnel" };
-  }
+    const result = await response.json();
 
-  const { data: petOwnerData } = await supabase
-    .from("PetOwnerProfiles")
-    .select("id")
-    .eq("id", user?.id);
-
-  if (petOwnerData && petOwnerData.length > 0) {
-    return { user, role: "pet-owner" };
-  }
-
-  const { data: adminData1 } = await supabaseAdmin
-    .from("PersonnelProfiles")
-    .select("id")
-    .eq("id", user?.id);
-
-  const { data: adminData2 } = await supabaseAdmin
-    .from("PetOwnerProfiles")
-    .select("id")
-    .eq("id", user?.id);
-
-  if (
-    (adminData1 && adminData1.length) === 0 ||
-    (adminData2 && adminData2.length === 0)
-  ) {
-    return { user, role: "admin" };
+    if (result.role) {
+      return { user, role: result.role };
+    }
+  } catch (err) {
+    console.error("Error checking role:", err);
   }
 
   return { user, role: null };

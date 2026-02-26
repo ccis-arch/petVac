@@ -1,36 +1,23 @@
-import { supabase, supabaseAdmin } from "@/utils/supabase";
+import { supabase } from "@/utils/supabase";
 
 export const createPersonnelUser = async (
   email: string,
   password: string,
   profile: any
 ) => {
-  const { data, error } = await supabaseAdmin.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: true,
+  const response = await fetch("/api/admin/personnel", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password, profile }),
   });
 
-  if (error) {
-    throw error;
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(result.error || "Failed to create personnel user");
   }
 
-  const user = data?.user;
-
-  if (user) {
-    const { data: profileData, error: insertError } = await supabaseAdmin
-      .from("PersonnelProfiles")
-      .insert({
-        id: user.id,
-        ...profile,
-      });
-
-    if (insertError) {
-      throw insertError;
-    }
-
-    return { profileData, userID: user.id };
-  }
+  return { profileData: result.profileData, userID: result.userID };
 };
 
 export const fetchPersonnelUserRecord = async (
@@ -74,46 +61,36 @@ export const editPersonnelUserRecord = async (
   id: string,
   updatedRecord: { email: string; password: string }
 ) => {
-  const { data: user, error } = await supabaseAdmin.auth.admin.updateUserById(
-    id,
-    {
-      email: updatedRecord.email,
-      password: updatedRecord.password,
-    }
-  );
+  const response = await fetch("/api/admin/personnel", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id, updatedRecord }),
+  });
 
-  if (error) {
-    throw error;
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(result.error || "Failed to update personnel user");
   }
 
-  if (user) {
-    try {
-      const { data, error } = await supabaseAdmin
-        .from("PersonnelProfiles")
-        .update(updatedRecord)
-        .eq("id", id);
-
-      if (error) {
-        throw error;
-      }
-
-      return data;
-    } catch (error) {
-      console.error("Error updating personnel user record:", error);
-      return null;
-    }
-  }
+  return result.data;
 };
 
 export const deletePersonnelUserRecord = async (id: string) => {
   try {
-    const { data, error } = await supabaseAdmin.auth.admin.deleteUser(id);
+    const response = await fetch("/api/admin/personnel", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
 
-    if (error) {
-      throw error;
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.error || "Failed to delete personnel user");
     }
 
-    return data;
+    return result.data;
   } catch (error) {
     console.error("Error deleting user:", error);
     return null;

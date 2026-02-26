@@ -1,4 +1,4 @@
-import { supabase, supabaseAdmin } from "@/utils/supabase";
+import { supabase } from "@/utils/supabase";
 import { PetOwner } from "@/types/interfaces";
 
 export const createPetOwnerUser = async (
@@ -6,31 +6,19 @@ export const createPetOwnerUser = async (
   password: string,
   profile: any
 ) => {
-  const { data, error } = await supabaseAdmin.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: true,
+  const response = await fetch("/api/admin/pet-owner", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password, profile }),
   });
 
-  if (error) {
-    throw error;
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(result.error || "Failed to create pet owner");
   }
-  const user = data?.user;
 
-  if (user) {
-    const { data: profileData, error: insertError } = await supabaseAdmin
-      .from("PetOwnerProfiles")
-      .insert({
-        id: user.id,
-        ...profile,
-      });
-
-    if (insertError) {
-      throw insertError;
-    }
-
-    return { profileData, userID: user.id };
-  }
+  return { profileData: result.profileData, userID: result.userID };
 };
 
 export const fetchPetOwnerRecord = async (

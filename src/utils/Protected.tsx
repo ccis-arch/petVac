@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { supabase, supabaseAdmin } from "../utils/supabase";
+import { supabase } from "../utils/supabase";
 import { useRouter } from "next/navigation";
 
 import { UserContext } from "./UserContext";
@@ -46,51 +46,38 @@ const Protected = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     if (user) {
       const checkRole = async () => {
-        const { data: personnelData } = await supabaseAdmin
-          .from("PersonnelProfiles")
-          .select("id, first_name, last_name")
-          .eq("id", user.id);
+        try {
+          const response = await fetch("/api/admin/check-role", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId: user.id }),
+          });
 
-        if (personnelData && personnelData.length > 0) {
-          const name = `${personnelData[0]?.first_name} ${personnelData[0]?.last_name}`;
-          setUserName(name);
-          setUserId(user.id);
-          router.push("/personnel/dashboard/registration");
-          return;
-        }
+          const result = await response.json();
 
-        const { data: petOwnerData } = await supabase
-          .from("PetOwnerProfiles")
-          .select("id, first_name, last_name, barangay")
-          .eq("id", user.id);
+          if (result.role === "personnel") {
+            setUserName(result.name);
+            setUserId(user.id);
+            router.push("/personnel/dashboard/registration");
+            return;
+          }
 
-        if (petOwnerData && petOwnerData.length > 0) {
-          const name = `${petOwnerData[0]?.first_name} ${petOwnerData[0]?.last_name}`;
-          setUserName(name);
-          setUserId(user.id);
-          setLocation(petOwnerData[0]?.barangay);
-          router.push("/pet-owner/dashboard");
-          return;
-        }
+          if (result.role === "pet-owner") {
+            setUserName(result.name);
+            setUserId(user.id);
+            setLocation(result.barangay);
+            router.push("/pet-owner/dashboard");
+            return;
+          }
 
-        const { data: adminData1 } = await supabaseAdmin
-          .from("PersonnelProfiles")
-          .select("id")
-          .eq("id", user.id);
-
-        const { data: adminData2 } = await supabaseAdmin
-          .from("PetOwnerProfiles")
-          .select("id")
-          .eq("id", user.id);
-
-        if (
-          (adminData1 && adminData1.length) === 0 ||
-          (adminData2 && adminData2.length === 0)
-        ) {
-          setUserName("Admin");
-          setUserId(user.id);
-          router.push("/admin/dashboard/dashboard");
-          return;
+          if (result.role === "admin") {
+            setUserName(result.name);
+            setUserId(user.id);
+            router.push("/admin/dashboard/dashboard");
+            return;
+          }
+        } catch (error) {
+          console.error("Error checking role:", error);
         }
       };
 
