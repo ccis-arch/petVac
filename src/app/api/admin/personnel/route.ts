@@ -11,6 +11,7 @@ function getAdminClient() {
 export async function POST(request: NextRequest) {
   try {
     const { email, password, profile } = await request.json();
+    console.log("[v0] personnel POST called, email:", email, "profile:", JSON.stringify(profile));
     const supabaseAdmin = getAdminClient();
 
     const { data, error } = await supabaseAdmin.auth.admin.createUser({
@@ -20,10 +21,12 @@ export async function POST(request: NextRequest) {
     });
 
     if (error) {
+      console.log("[v0] Personnel auth create error:", error.message);
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
     const user = data?.user;
+    console.log("[v0] Personnel auth user created, id:", user?.id);
 
     if (user) {
       const { data: profileData, error: insertError } = await supabaseAdmin
@@ -34,6 +37,7 @@ export async function POST(request: NextRequest) {
         });
 
       if (insertError) {
+        console.log("[v0] Personnel profile insert error:", insertError.message, insertError.details, insertError.hint);
         return NextResponse.json(
           { error: insertError.message },
           { status: 400 }

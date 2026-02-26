@@ -14,6 +14,7 @@ function getAdminClient() {
 export async function POST(request: NextRequest) {
   try {
     const { email, password, profile } = await request.json();
+    console.log("[v0] pet-owner POST called, email:", email, "profile keys:", Object.keys(profile || {}));
     const supabaseAdmin = getAdminClient();
 
     const { data, error } = await supabaseAdmin.auth.admin.createUser({
@@ -23,10 +24,12 @@ export async function POST(request: NextRequest) {
     });
 
     if (error) {
+      console.log("[v0] Auth create error:", error.message);
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
     const user = data?.user;
+    console.log("[v0] Auth user created, id:", user?.id);
 
     if (user) {
       // Format date_registered to ISO date string for the date column
@@ -43,6 +46,7 @@ export async function POST(request: NextRequest) {
         .insert(profileToInsert);
 
       if (insertError) {
+        console.log("[v0] Profile insert error:", insertError.message, insertError.details, insertError.hint);
         // Clean up the auth user if profile insert fails
         await supabaseAdmin.auth.admin.deleteUser(user.id);
         return NextResponse.json(
