@@ -5,9 +5,6 @@ export const createPersonnelUser = async (
   password: string,
   profile: any
 ) => {
-  console.log("[v0] createPersonnelUser called, email:", email);
-  console.log("[v0] profile being sent:", JSON.stringify(profile));
-  
   const response = await fetch("/api/admin/personnel", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -15,7 +12,6 @@ export const createPersonnelUser = async (
   });
 
   const result = await response.json();
-  console.log("[v0] Personnel API response status:", response.status, "result:", JSON.stringify(result));
 
   if (!response.ok) {
     throw new Error(result.error || "Failed to create personnel user");

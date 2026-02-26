@@ -14,9 +14,35 @@ function getAdminClient() {
 export async function POST(request: NextRequest) {
   try {
     const { email, password, profile } = await request.json();
-    console.log("[v0] pet-owner POST called, email:", email, "profile keys:", Object.keys(profile || {}));
     const supabaseAdmin = getAdminClient();
 
+    // First check if an auth user with this email already exists
+    const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
+    const existingUser = existingUsers?.users?.find(
+      (u) => u.email === email
+    );
+
+    if (existingUser) {
+      // Check if this orphaned auth user has a profile row
+      const { data: existingProfile } = await supabaseAdmin
+        .from("PetOwnerProfiles")
+        .select("id")
+        .eq("id", existingUser.id)
+        .maybeSingle();
+
+      if (existingProfile) {
+        // User genuinely already exists with a profile
+        return NextResponse.json(
+          { error: "A user with this email address has already been registered." },
+          { status: 400 }
+        );
+      }
+
+      // Orphaned auth user (no profile) - delete it so we can re-create
+      await supabaseAdmin.auth.admin.deleteUser(existingUser.id);
+    }
+
+    // Create the auth user
     const { data, error } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
@@ -24,41 +50,43 @@ export async function POST(request: NextRequest) {
     });
 
     if (error) {
-      console.log("[v0] Auth create error:", error.message);
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
     const user = data?.user;
-    console.log("[v0] Auth user created, id:", user?.id);
 
-    if (user) {
-      // Format date_registered to ISO date string for the date column
-      const profileToInsert = {
-        id: user.id,
-        ...profile,
-        date_registered: profile.date_registered 
-          ? new Date(profile.date_registered).toISOString().split("T")[0] 
-          : new Date().toISOString().split("T")[0],
-      };
-
-      const { data: profileData, error: insertError } = await supabaseAdmin
-        .from("PetOwnerProfiles")
-        .insert(profileToInsert);
-
-      if (insertError) {
-        console.log("[v0] Profile insert error:", insertError.message, insertError.details, insertError.hint);
-        // Clean up the auth user if profile insert fails
-        await supabaseAdmin.auth.admin.deleteUser(user.id);
-        return NextResponse.json(
-          { error: insertError.message },
-          { status: 400 }
-        );
-      }
-
-      return NextResponse.json({ profileData, userID: user.id });
+    if (!user) {
+      return NextResponse.json({ error: "User creation failed" }, { status: 500 });
     }
 
-    return NextResponse.json({ error: "User creation failed" }, { status: 500 });
+    // Format date fields properly for date columns
+    const profileToInsert: Record<string, any> = {
+      id: user.id,
+      email: profile.email,
+      password: profile.password,
+      first_name: profile.first_name,
+      last_name: profile.last_name,
+      gender: profile.gender,
+      barangay: profile.barangay,
+      phone_number: profile.phone_number,
+      birth_date: profile.birth_date || null,
+      date_registered: new Date().toISOString().split("T")[0],
+    };
+
+    const { data: profileData, error: insertError } = await supabaseAdmin
+      .from("PetOwnerProfiles")
+      .insert(profileToInsert);
+
+    if (insertError) {
+      // Clean up the auth user if profile insert fails
+      await supabaseAdmin.auth.admin.deleteUser(user.id);
+      return NextResponse.json(
+        { error: insertError.message },
+        { status: 400 }
+      );
+    }
+
+    return NextResponse.json({ profileData, userID: user.id });
   } catch (error: any) {
     return NextResponse.json(
       { error: error.message || "Internal server error" },

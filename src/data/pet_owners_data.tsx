@@ -6,9 +6,6 @@ export const createPetOwnerUser = async (
   password: string,
   profile: any
 ) => {
-  console.log("[v0] createPetOwnerUser called, email:", email);
-  console.log("[v0] profile being sent:", JSON.stringify(profile));
-  
   const response = await fetch("/api/admin/pet-owner", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -16,7 +13,6 @@ export const createPetOwnerUser = async (
   });
 
   const result = await response.json();
-  console.log("[v0] API response status:", response.status, "result:", JSON.stringify(result));
 
   if (!response.ok) {
     throw new Error(result.error || "Failed to create pet owner");
