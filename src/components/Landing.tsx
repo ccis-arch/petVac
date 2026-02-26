@@ -94,7 +94,9 @@ const Landing = () => {
     };
 
     try {
-      await createPetOwnerUser(email, password, newRecord);
+      console.log("[v0] Submitting registration for:", email, "profile keys:", Object.keys(newRecord));
+      const result = await createPetOwnerUser(email, password, newRecord);
+      console.log("[v0] Registration result:", result);
       handleClearForm();
       setLoading(false);
       // router.push("/pet-owner/dashboard");
@@ -109,7 +111,8 @@ const Landing = () => {
       await insertAdminNotification(newAdminNotif);
     } catch (error: any) {
       setLoading(false);
-      console.error("Failed to create user:", error);
+      console.error("[v0] Failed to create user:", error);
+      console.error("[v0] Error message:", error?.message);
       const errorMessage =
         error?.message || "An unexpected error occurred. Please try again.";
       alert("Failed to create user: " + errorMessage);

@@ -6,13 +6,18 @@ export const createPetOwnerUser = async (
   password: string,
   profile: any
 ) => {
+  console.log("[v0] createPetOwnerUser called with email:", email);
+  console.log("[v0] Profile data:", JSON.stringify(profile));
+
   const response = await fetch("/api/register-pet-owner", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password, profile }),
   });
 
+  console.log("[v0] API response status:", response.status);
   const result = await response.json();
+  console.log("[v0] API response body:", JSON.stringify(result));
 
   if (!response.ok) {
     throw new Error(result.error || "Failed to register user.");
