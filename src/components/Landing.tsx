@@ -107,12 +107,12 @@ const Landing = () => {
       };
 
       await insertAdminNotification(newAdminNotif);
-    } catch (error) {
+    } catch (error: any) {
       setLoading(false);
-      // console.error("Failed to create user:", error);
-      alert(
-        "Failed to create user: A user with this email address has already been registered."
-      );
+      console.error("Failed to create user:", error);
+      const errorMessage =
+        error?.message || "An unexpected error occurred. Please try again.";
+      alert("Failed to create user: " + errorMessage);
     }
   };
 
