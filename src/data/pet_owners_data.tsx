@@ -6,19 +6,47 @@ export const createPetOwnerUser = async (
   password: string,
   profile: any
 ) => {
-  const response = await fetch("/api/admin/pet-owner", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password, profile }),
+  // Step 1: Create auth user using Supabase signUp (works with anon key)
+  const { data: authData, error: authError } = await supabase.auth.signUp({
+    email,
+    password,
   });
 
-  const result = await response.json();
-
-  if (!response.ok) {
-    throw new Error(result.error || "Failed to create pet owner");
+  if (authError) {
+    throw new Error(authError.message);
   }
 
-  return { profileData: result.profileData, userID: result.userID };
+  const user = authData?.user;
+  if (!user) {
+    throw new Error("User creation failed - no user returned");
+  }
+
+  // Step 2: Insert profile into PetOwnerProfiles using the now-authenticated session
+  const profileToInsert = {
+    id: user.id,
+    email: profile.email || email,
+    password: profile.password || password,
+    first_name: profile.first_name || "",
+    last_name: profile.last_name || "",
+    gender: profile.gender || "",
+    barangay: profile.barangay || "",
+    phone_number: profile.phone_number || "",
+    birth_date: profile.birth_date || null,
+    date_registered: new Date().toISOString().split("T")[0],
+  };
+
+  const { data: profileData, error: insertError } = await supabase
+    .from("PetOwnerProfiles")
+    .insert(profileToInsert);
+
+  if (insertError) {
+    throw new Error("Profile creation failed: " + insertError.message);
+  }
+
+  // Sign out after registration so user can log in fresh
+  await supabase.auth.signOut();
+
+  return { profileData, userID: user.id };
 };
 
 export const fetchPetOwnerRecord = async (

@@ -45,15 +45,24 @@ const SigninComponent = () => {
         alert("An error occurred: " + error.message);
       } else {
         const user = data?.user;
-        const roleResponse = await fetch("/api/admin/check-role", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userId: user?.id }),
-        });
-        const roleResult = await roleResponse.json();
+
+        // Check role directly via Supabase queries
+        const { data: personnelData } = await supabase
+          .from("PersonnelProfiles")
+          .select("id")
+          .eq("id", user?.id);
+
+        const { data: petOwnerData } = await supabase
+          .from("PetOwnerProfiles")
+          .select("id")
+          .eq("id", user?.id);
+
+        const isPersonnel = personnelData && personnelData.length > 0;
+        const isPetOwner = petOwnerData && petOwnerData.length > 0;
+        const isAdmin = !isPersonnel && !isPetOwner;
 
         if (role === "personnel") {
-          if (roleResult.role !== "personnel") {
+          if (!isPersonnel) {
             setLoading(false);
             alert("You are not a personnel!");
             await supabase.auth.signOut();
@@ -61,7 +70,7 @@ const SigninComponent = () => {
           }
           router.push("/personnel/dashboard/dashboard");
         } else if (role === "pet_owner") {
-          if (roleResult.role !== "pet-owner") {
+          if (!isPetOwner) {
             setLoading(false);
             alert("You are not a pet owner!");
             await supabase.auth.signOut();
@@ -69,7 +78,7 @@ const SigninComponent = () => {
           }
           router.push("/pet-owner/dashboard/");
         } else if (role === "admin") {
-          if (roleResult.role === "admin") {
+          if (isAdmin) {
             setLoading(false);
             router.push("/admin/dashboard/dashboard");
             return;

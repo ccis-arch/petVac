@@ -11,21 +11,30 @@ export async function getUserAndRole(sessionToken: string) {
     return { user: null, role: null };
   }
 
+  if (!user) return { user: null, role: null };
+
   try {
-    const response = await fetch("/api/admin/check-role", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId: user?.id }),
-    });
+    const { data: personnelData } = await supabase
+      .from("PersonnelProfiles")
+      .select("id")
+      .eq("id", user.id);
 
-    const result = await response.json();
-
-    if (result.role) {
-      return { user, role: result.role };
+    if (personnelData && personnelData.length > 0) {
+      return { user, role: "personnel" };
     }
+
+    const { data: petOwnerData } = await supabase
+      .from("PetOwnerProfiles")
+      .select("id")
+      .eq("id", user.id);
+
+    if (petOwnerData && petOwnerData.length > 0) {
+      return { user, role: "pet-owner" };
+    }
+
+    return { user, role: "admin" };
   } catch (err) {
     console.error("Error checking role:", err);
+    return { user, role: null };
   }
-
-  return { user, role: null };
 }

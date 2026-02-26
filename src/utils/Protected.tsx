@@ -47,35 +47,39 @@ const Protected = ({ children }: { children: React.ReactNode }) => {
     if (user) {
       const checkRole = async () => {
         try {
-          const response = await fetch("/api/admin/check-role", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ userId: user.id }),
-          });
+          // Check PersonnelProfiles
+          const { data: personnelData } = await supabase
+            .from("PersonnelProfiles")
+            .select("id, first_name, last_name")
+            .eq("id", user.id);
 
-          const result = await response.json();
-
-          if (result.role === "personnel") {
-            setUserName(result.name);
+          if (personnelData && personnelData.length > 0) {
+            const name = `${personnelData[0]?.first_name} ${personnelData[0]?.last_name}`;
+            setUserName(name);
             setUserId(user.id);
             router.push("/personnel/dashboard/registration");
             return;
           }
 
-          if (result.role === "pet-owner") {
-            setUserName(result.name);
+          // Check PetOwnerProfiles
+          const { data: petOwnerData } = await supabase
+            .from("PetOwnerProfiles")
+            .select("id, first_name, last_name, barangay")
+            .eq("id", user.id);
+
+          if (petOwnerData && petOwnerData.length > 0) {
+            const name = `${petOwnerData[0]?.first_name} ${petOwnerData[0]?.last_name}`;
+            setUserName(name);
             setUserId(user.id);
-            setLocation(result.barangay);
+            setLocation(petOwnerData[0]?.barangay);
             router.push("/pet-owner/dashboard");
             return;
           }
 
-          if (result.role === "admin") {
-            setUserName(result.name);
-            setUserId(user.id);
-            router.push("/admin/dashboard/dashboard");
-            return;
-          }
+          // No profile in either table = admin
+          setUserName("Admin");
+          setUserId(user.id);
+          router.push("/admin/dashboard/dashboard");
         } catch (error) {
           console.error("Error checking role:", error);
         }
