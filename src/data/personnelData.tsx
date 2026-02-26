@@ -5,68 +5,19 @@ export const createPersonnelUser = async (
   password: string,
   profile: any
 ) => {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const serviceKey = process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY || "";
-
-  // Step 1: Create auth user via Supabase Admin REST API
-  const authRes = await fetch(`${supabaseUrl}/auth/v1/admin/users`, {
+  const response = await fetch("/api/admin/personnel", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      apikey: serviceKey,
-      Authorization: `Bearer ${serviceKey}`,
-    },
-    body: JSON.stringify({
-      email,
-      password,
-      email_confirm: true,
-    }),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password, profile }),
   });
 
-  const authData = await authRes.json();
+  const result = await response.json();
 
-  if (!authRes.ok) {
-    throw new Error(authData?.msg || authData?.message || "Failed to create auth user");
+  if (!response.ok) {
+    throw new Error(result.error || "Failed to create personnel user");
   }
 
-  const userId = authData.id;
-
-  // Step 2: Insert profile into PersonnelProfiles via REST API
-  const profileRes = await fetch(`${supabaseUrl}/rest/v1/PersonnelProfiles`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      apikey: serviceKey,
-      Authorization: `Bearer ${serviceKey}`,
-      Prefer: "return=representation",
-    },
-    body: JSON.stringify({
-      id: userId,
-      email: profile.email || email,
-      password: profile.password || password,
-      first_name: profile.first_name || "",
-      last_name: profile.last_name || "",
-      phone_number: profile.phone_number || "",
-      address: profile.address || "",
-    }),
-  });
-
-  const profileData = await profileRes.json();
-
-  if (!profileRes.ok) {
-    // Cleanup: delete orphan auth user
-    await fetch(`${supabaseUrl}/auth/v1/admin/users/${userId}`, {
-      method: "DELETE",
-      headers: {
-        apikey: serviceKey,
-        Authorization: `Bearer ${serviceKey}`,
-      },
-    });
-    const errMsg = Array.isArray(profileData) ? profileData[0]?.message : profileData?.message;
-    throw new Error("Profile creation failed: " + (errMsg || "Unknown error"));
-  }
-
-  return { profileData, userID: userId };
+  return { profileData: result.profileData, userID: result.userID };
 };
 
 export const fetchPersonnelUserRecord = async (
@@ -110,76 +61,36 @@ export const editPersonnelUserRecord = async (
   id: string,
   updatedRecord: { email: string; password: string }
 ) => {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const serviceKey = process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY || "";
-
-  // Update auth user
-  const authRes = await fetch(`${supabaseUrl}/auth/v1/admin/users/${id}`, {
+  const response = await fetch("/api/admin/personnel", {
     method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      apikey: serviceKey,
-      Authorization: `Bearer ${serviceKey}`,
-    },
-    body: JSON.stringify({
-      email: updatedRecord.email,
-      password: updatedRecord.password,
-    }),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id, updatedRecord }),
   });
 
-  if (!authRes.ok) {
-    const authData = await authRes.json();
-    throw new Error(authData?.msg || authData?.message || "Failed to update auth user");
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(result.error || "Failed to update personnel user");
   }
 
-  // Update profile
-  const profileRes = await fetch(
-    `${supabaseUrl}/rest/v1/PersonnelProfiles?id=eq.${id}`,
-    {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        apikey: serviceKey,
-        Authorization: `Bearer ${serviceKey}`,
-        Prefer: "return=representation",
-      },
-      body: JSON.stringify(updatedRecord),
-    }
-  );
-
-  const profileData = await profileRes.json();
-
-  if (!profileRes.ok) {
-    throw new Error("Failed to update personnel profile");
-  }
-
-  return profileData;
+  return result.data;
 };
 
 export const deletePersonnelUserRecord = async (id: string) => {
   try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const serviceKey = process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY || "";
-
-    // Delete profile first
-    await fetch(`${supabaseUrl}/rest/v1/PersonnelProfiles?id=eq.${id}`, {
+    const response = await fetch("/api/admin/personnel", {
       method: "DELETE",
-      headers: {
-        apikey: serviceKey,
-        Authorization: `Bearer ${serviceKey}`,
-      },
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
     });
 
-    // Delete auth user
-    await fetch(`${supabaseUrl}/auth/v1/admin/users/${id}`, {
-      method: "DELETE",
-      headers: {
-        apikey: serviceKey,
-        Authorization: `Bearer ${serviceKey}`,
-      },
-    });
+    const result = await response.json();
 
-    return true;
+    if (!response.ok) {
+      throw new Error(result.error || "Failed to delete personnel user");
+    }
+
+    return result.data;
   } catch (error) {
     console.error("Error deleting user:", error);
     return null;

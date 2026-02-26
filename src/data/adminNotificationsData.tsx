@@ -20,35 +20,14 @@ export const getAdminNotifications = async () => {
 
 export const insertAdminNotification = async (notifData: any) => {
   try {
-    // Use REST API with service key to bypass RLS (called during registration before full auth)
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const serviceKey = process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY || "";
+    const response = await fetch("/api/admin/notifications", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(notifData),
+    });
 
-    if (serviceKey) {
-      const res = await fetch(`${supabaseUrl}/rest/v1/AdminNotifications`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: serviceKey,
-          Authorization: `Bearer ${serviceKey}`,
-          Prefer: "return=representation",
-        },
-        body: JSON.stringify(notifData),
-      });
-      const result = await res.json();
-      return { data: result, status: res.status };
-    }
-
-    // Fallback to supabase client
-    const { data, error, status } = await supabase
-      .from("AdminNotifications")
-      .insert(notifData);
-
-    if (error) {
-      throw error;
-    }
-
-    return { data, status };
+    const result = await response.json();
+    return { data: result.data, status: response.status };
   } catch (error) {
     console.error("Error inserting into table:", error);
     return null;

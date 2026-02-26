@@ -636,26 +636,19 @@ const PetOwnerDashboard = () => {
 
   const [loading, setLoading] = useState(false);
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const serviceKey = process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY || "";
-
   const memoizedFetchUserEmailData = useCallback(async () => {
     try {
-      const res = await fetch(`${supabaseUrl}/auth/v1/admin/users/${userId}`, {
-        headers: {
-          apikey: serviceKey,
-          Authorization: `Bearer ${serviceKey}`,
-        },
-      });
-      const userData = await res.json();
-      if (res.ok && userData?.email) {
-        setEmail(userData.email);
-        setCurrentEmail(userData.email);
+      const response = await fetch(`/api/admin/user?userId=${userId}`);
+      const result = await response.json();
+
+      if (response.ok && result.user?.email) {
+        setEmail(result.user.email);
+        setCurrentEmail(result.user.email);
       }
     } catch (error) {
       console.error("Error fetching user data:", error);
     }
-  }, [userId, supabaseUrl, serviceKey]);
+  }, [userId]);
 
   useEffect(() => {
     memoizedFetchUserEmailData();
@@ -666,19 +659,16 @@ const PetOwnerDashboard = () => {
 
     try {
       const updates = editType === "email" ? { email } : { password: newPassword };
-      const res = await fetch(`${supabaseUrl}/auth/v1/admin/users/${userId}`, {
+      const response = await fetch("/api/admin/user", {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: serviceKey,
-          Authorization: `Bearer ${serviceKey}`,
-        },
-        body: JSON.stringify(updates),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, updates }),
       });
 
-      if (!res.ok) {
-        const errData = await res.json();
-        console.error(`Error updating user ${editType}:`, errData);
+      const result = await response.json();
+
+      if (!response.ok) {
+        console.error(`Error updating user ${editType}:`, result.error);
         setLoading(false);
         return;
       }
@@ -691,14 +681,10 @@ const PetOwnerDashboard = () => {
           .eq("id", userId);
         if (error) {
           // Revert auth email if profile update fails
-          await fetch(`${supabaseUrl}/auth/v1/admin/users/${userId}`, {
+          await fetch("/api/admin/user", {
             method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-              apikey: serviceKey,
-              Authorization: `Bearer ${serviceKey}`,
-            },
-            body: JSON.stringify({ email: currentEmail }),
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId, updates: { email: currentEmail } }),
           });
           setLoading(false);
           return;
