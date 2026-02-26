@@ -89,7 +89,7 @@ const Landing = () => {
       gender: gender,
       barangay: barangay,
       birth_date: ownerBirthDate ? ownerBirthDate : null,
-      date_registered: new Date(),
+      date_registered: new Date().toDateString,
       // status: "active",
     };
 
@@ -418,11 +418,10 @@ const Landing = () => {
                                     value={email}
                                     placeholder="example@domain.com"
                                     onChange={(e) => setEmail(e.target.value)}
-                                    className={`input-style-with-condition ${
-                                      email && !email.includes("@")
+                                    className={`input-style-with-condition ${email && !email.includes("@")
                                         ? "border-red-600 focus:ring-red-500 focus:border-red-500"
                                         : "border-green-700 focus:ring-green-500 focus:border-green-500"
-                                    }`}
+                                      }`}
                                   />
                                 </div>
                                 <div>
@@ -451,11 +450,10 @@ const Landing = () => {
                                           setError("");
                                         }
                                       }}
-                                      className={`input-style-with-condition ${
-                                        password && password.length < 8
+                                      className={`input-style-with-condition ${password && password.length < 8
                                           ? "border-red-600 focus:ring-red-500 focus:border-red-500"
                                           : "border-green-700 focus:ring-green-500 focus:border-green-500"
-                                      }`}
+                                        }`}
                                     />
                                     <div
                                       className="z-0 absolute text-gray-400 right-3 top-1/2 transform -translate-y-1/2 text-2xl"
@@ -506,13 +504,13 @@ const Landing = () => {
                                     }
                                     color={
                                       !lastName ||
-                                      !firstName ||
-                                      !gender ||
-                                      !barangay ||
-                                      !phoneNumber ||
-                                      !email ||
-                                      !password ||
-                                      !isCheckedDataPrivacy
+                                        !firstName ||
+                                        !gender ||
+                                        !barangay ||
+                                        !phoneNumber ||
+                                        !email ||
+                                        !password ||
+                                        !isCheckedDataPrivacy
                                         ? "default"
                                         : "success"
                                     }
