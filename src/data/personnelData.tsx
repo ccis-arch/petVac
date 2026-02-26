@@ -18,7 +18,7 @@ export const createPersonnelUser = async (
   const user = data?.user;
 
   if (user) {
-    const { data: profileData, error: insertError } = await supabase
+    const { data: profileData, error: insertError } = await supabaseAdmin
       .from("PersonnelProfiles")
       .insert({
         id: user.id,
@@ -88,7 +88,7 @@ export const editPersonnelUserRecord = async (
 
   if (user) {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from("PersonnelProfiles")
         .update(updatedRecord)
         .eq("id", id);

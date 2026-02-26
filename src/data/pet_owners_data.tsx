@@ -18,7 +18,7 @@ export const createPetOwnerUser = async (
   const user = data?.user;
 
   if (user) {
-    const { data: profileData, error: insertError } = await supabase
+    const { data: profileData, error: insertError } = await supabaseAdmin
       .from("PetOwnerProfiles")
       .insert({
         id: user.id,

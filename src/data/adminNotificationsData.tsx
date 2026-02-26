@@ -1,4 +1,4 @@
-import { supabase } from "@/utils/supabase";
+import { supabase, supabaseAdmin } from "@/utils/supabase";
 
 export const getAdminNotifications = async () => {
   try {
@@ -20,7 +20,7 @@ export const getAdminNotifications = async () => {
 
 export const insertAdminNotification = async (data: any) => {
   try {
-    const response = await supabase.from("AdminNotifications").insert(data);
+    const response = await supabaseAdmin.from("AdminNotifications").insert(data);
     if (response.error) {
       throw response.error;
     }
