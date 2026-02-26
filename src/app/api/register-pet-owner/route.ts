@@ -74,6 +74,8 @@ export async function POST(request: NextRequest) {
 
         if (orphanedUser) {
           console.log("[v0] Found orphaned auth user:", orphanedUser.id, "- deleting");
+          // Also clean up any orphaned app.users record
+          await supabaseAdmin.schema("app").from("users").delete().eq("id", orphanedUser.id);
           await supabaseAdmin.auth.admin.deleteUser(orphanedUser.id);
 
           // Retry creating the user
@@ -135,7 +137,36 @@ async function insertProfile(
 ) {
   console.log("[v0] Auth user created/found:", user.id);
 
-  // Build a clean profile object matching the PetOwnerProfiles columns
+  // Step 1: Insert into app.users first (PetOwnerProfiles.id has a FK to app.users.id)
+  const fullName = [profile?.first_name, profile?.last_name]
+    .filter(Boolean)
+    .join(" ") || "";
+
+  const appUser = {
+    id: user.id,
+    email: email,
+    password: password,
+    full_name: fullName,
+    role: "pet_owner",
+  };
+
+  console.log("[v0] Inserting into app.users:", JSON.stringify(appUser));
+
+  const { error: appUserError } = await supabaseAdmin
+    .schema("app")
+    .from("users")
+    .insert(appUser);
+
+  if (appUserError) {
+    console.error("[v0] app.users insert error:", appUserError.message, appUserError.details, appUserError.hint, appUserError.code);
+    // Clean up auth user if app.users insert fails
+    await supabaseAdmin.auth.admin.deleteUser(user.id);
+    return NextResponse.json({ error: appUserError.message }, { status: 400 });
+  }
+
+  console.log("[v0] app.users record created for:", user.id);
+
+  // Step 2: Insert into PetOwnerProfiles
   const cleanProfile: Record<string, any> = {
     id: user.id,
     email: email,
@@ -155,22 +186,18 @@ async function insertProfile(
       .split("T")[0];
   }
 
-  console.log("[v0] Inserting profile:", JSON.stringify(cleanProfile));
+  console.log("[v0] Inserting PetOwnerProfile:", JSON.stringify(cleanProfile));
 
   const { error: insertError } = await supabaseAdmin
     .from("PetOwnerProfiles")
     .insert(cleanProfile);
 
   if (insertError) {
-    console.error(
-      "[v0] Profile insert error:",
-      insertError.message,
-      insertError.details,
-      insertError.hint,
-      insertError.code
-    );
-    // If profile insertion fails, clean up the auth user
+    console.error("[v0] Profile insert error:", insertError.message, insertError.details, insertError.hint, insertError.code);
+    // Clean up both app.users and auth user on failure
+    await supabaseAdmin.schema("app").from("users").delete().eq("id", user.id);
     await supabaseAdmin.auth.admin.deleteUser(user.id);
+    console.log("[v0] Cleaned up app.users and auth user:", user.id);
     return NextResponse.json({ error: insertError.message }, { status: 400 });
   }
 
