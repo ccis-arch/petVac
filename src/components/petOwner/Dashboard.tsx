@@ -267,10 +267,11 @@ const PetOwnerDashboard = () => {
         const data = await fetchPetRecordByOwnerID(userId);
         setRecords(data || []);
 
-        setNotifications(generateNotification(data));
-
-        // update date_vaccinated of pet if past due
-        if (data) {
+        // Generate notifications for each pet record
+        if (data && data.length > 0) {
+          const notifs = data.map((record: any) => generateNotification(record));
+          setNotifications(notifs);
+          // update date_vaccinated of pet if past due
           data.map(updateVaccinationDate);
         }
       } catch (error) {

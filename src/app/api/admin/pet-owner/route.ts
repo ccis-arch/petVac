@@ -5,6 +5,9 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 function getAdminClient() {
+  if (!supabaseUrl || !supabaseServiceKey) {
+    throw new Error("Missing Supabase configuration");
+  }
   return createClient(supabaseUrl, supabaseServiceKey);
 }
 
@@ -26,14 +29,22 @@ export async function POST(request: NextRequest) {
     const user = data?.user;
 
     if (user) {
+      // Format date_registered to ISO date string for the date column
+      const profileToInsert = {
+        id: user.id,
+        ...profile,
+        date_registered: profile.date_registered 
+          ? new Date(profile.date_registered).toISOString().split("T")[0] 
+          : new Date().toISOString().split("T")[0],
+      };
+
       const { data: profileData, error: insertError } = await supabaseAdmin
         .from("PetOwnerProfiles")
-        .insert({
-          id: user.id,
-          ...profile,
-        });
+        .insert(profileToInsert);
 
       if (insertError) {
+        // Clean up the auth user if profile insert fails
+        await supabaseAdmin.auth.admin.deleteUser(user.id);
         return NextResponse.json(
           { error: insertError.message },
           { status: 400 }

@@ -62,7 +62,7 @@ export const deleteAllAdminNotifications = async () => {
     const { data, error } = await supabase
       .from("AdminNotifications")
       .delete()
-      .match({});
+      .gte("id", 0);
 
     if (error) {
       throw error;
